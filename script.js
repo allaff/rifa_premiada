@@ -56,3 +56,33 @@ function renderizarRanking(dados) {
 }
 
 carregarDados();
+
+function atualizarCronometro() {
+    // Definimos a data alvo: 14 de Fevereiro de 2026 às 19:00
+    const dataSorteio = new Date('2026-02-14T19:00:00').getTime();
+    const agora = new Date().getTime();
+    const diferenca = dataSorteio - agora;
+
+    const display = document.getElementById('countdown');
+
+    if (diferenca <= 0) {
+        display.innerHTML = "🚀 O SORTEIO COMEÇOU!";
+        display.classList.add('text-yellow-500', 'animate-pulse');
+        return;
+    }
+
+    // Cálculos matemáticos para converter milissegundos
+    const dias = Math.floor(diferenca / (1000 * 60 * 60 * 24));
+    const horas = Math.floor((diferenca % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutos = Math.floor((diferenca % (1000 * 60 * 60)) / (1000 * 60));
+    const segundos = Math.floor((diferenca % (1000 * 60)) / 1000);
+
+    // Formatação com zero à esquerda (ex: 05h em vez de 5h)
+    const pad = (n) => n.toString().padStart(2, '0');
+
+    display.innerText = `${dias}d ${pad(horas)}h ${pad(minutos)}m ${pad(segundos)}s`;
+}
+
+// Executa a cada 1 segundo
+setInterval(atualizarCronometro, 1000);
+atualizarCronometro(); // Chama uma vez ao carregar para não esperar 1s
