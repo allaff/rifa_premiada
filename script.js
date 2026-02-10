@@ -7,8 +7,9 @@ let numerosSelecionados = [];
 // Função para buscar dados e atualizar interface
 async function carregarDados() {
     try {
-        // Timestamp para forçar o Google a enviar dados frescos (Burlar Cache)
-        const response = await fetch(`${SHEET_URL}&t=${new Date().getTime()}`);
+        // Timestamp ultra-preciso para evitar que o Google entregue dados velhos
+        const refreshRate = new Date().getTime();
+        const response = await fetch(`${SHEET_URL}&t=${refreshRate}`);
         const data = await response.text();
         const linhas = data.split('\n').map(l => l.trim()).slice(1);
 
@@ -22,7 +23,7 @@ async function carregarDados() {
             let nome = colunas[0].trim();
             const numeroCota = (index + 1).toString();
 
-            // Lógica de Ocupação: ignora se contiver "Pendente", se for vazio ou apenas número
+            // Só ocupa se o nome for válido e não for "Pendente"
             const estaVazio = nome === "" || nome === undefined;
             const estaPendente = nome.toLowerCase().includes("pendente");
             const ehApenasNumero = /^\d+$/.test(nome);
@@ -46,6 +47,7 @@ async function carregarDados() {
         console.error("Erro ao carregar dados:", er);
     }
 }
+
 
 function renderizarRanking(dados) {
     const container = document.getElementById('ranking-list');
@@ -106,16 +108,17 @@ function toggleNumero(num) {
 
 // FUNÇÃO REAJUSTADA PARA RESPOSTA IMEDIATA
 async function finalizarEscolha() {
+    if (numerosSelecionados.length === 0) return alert("Selecione ao menos um número!");
+
     const nome = prompt(`🛒 RESERVA DE COTAS\nNúmeros: ${numerosSelecionados.join(', ')}\n\nDigite seu nome completo:`);
     if (!nome || nome.trim().length < 3) return alert("Nome inválido!");
 
     const total = (numerosSelecionados.length * 5).toFixed(2);
-    const msg = window.encodeURIComponent(`Olá! Sou ${nome} e escolhi os números (${numerosSelecionados.join(', ')}) no site. Gostaria dos dados para o Pix de R$ ${total} reais.`);
+    const msg = window.encodeURIComponent(`Olá! Sou ${nome} e escolhi os números (${numerosSelecionados.join(', ')}) no site. Gostaria dos dados para o Pix de R$ ${total}.`);
 
-    // REDIRECIONAMENTO IMEDIATO (Antes de esperar o fetch terminar)
     const whatsappUrl = `https://wa.me/${MEU_WHATSAPP}?text=${msg}`;
 
-    // Dispara a gravação em segundo plano (sem o 'await' no loop para não travar o usuário)
+    // Grava APENAS os números que estão atualmente selecionados
     numerosSelecionados.forEach(num => {
         fetch(API_APPS_SCRIPT, {
             method: 'POST',
@@ -124,7 +127,11 @@ async function finalizarEscolha() {
         });
     });
 
-    // Envia o usuário para o WhatsApp na hora
+    // Limpa a seleção local após o redirecionamento para evitar duplicidade em cliques futuros
+    const nSelBuffer = [...numerosSelecionados];
+    numerosSelecionados = [];
+    atualizarInterfaceSelecao();
+
     window.location.href = whatsappUrl;
 }
 
