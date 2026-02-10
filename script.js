@@ -110,7 +110,7 @@ async function finalizarEscolha() {
     if (!nome || nome.trim().length < 3) return alert("Nome inválido!");
 
     const total = (numerosSelecionados.length * 5).toFixed(2);
-    const msg = window.encodeURIComponent(`Olá! Sou ${nome} e escolhi os números (${numerosSelecionados.join(', ')}) no site. Gostaria dos dados para o Pix de R$ ${total}.`);
+    const msg = window.encodeURIComponent(`Olá! Sou ${nome} e escolhi os números (${numerosSelecionados.join(', ')}) no site. Gostaria dos dados para o Pix de R$ ${total} reais.`);
 
     // REDIRECIONAMENTO IMEDIATO (Antes de esperar o fetch terminar)
     const whatsappUrl = `https://wa.me/${MEU_WHATSAPP}?text=${msg}`;
