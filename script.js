@@ -4,10 +4,11 @@ const MEU_WHATSAPP = '5583999646934';
 
 let numerosSelecionados = [];
 
-// Função principal de inicialização
+// Função para buscar dados e atualizar interface
 async function carregarDados() {
     try {
-        const response = await fetch(SHEET_URL);
+        // Timestamp para forçar o Google a enviar dados frescos
+        const response = await fetch(`${SHEET_URL}&t=${new Date().getTime()}`);
         const data = await response.text();
         const linhas = data.split('\n').slice(1);
 
@@ -16,19 +17,22 @@ async function carregarDados() {
 
         linhas.forEach((linha, index) => {
             const colunas = linha.split(',');
-            let nome = colunas[0]?.trim();
+            if (!colunas[0]) return;
+
+            let nome = colunas[0].trim();
             const numeroCota = (index + 1).toString();
 
-            // LÓGICA DE FILTRO: 
-            // Só considera ocupado se tiver nome E NÃO contiver "(Pendente)"
-            // Também ignora se o campo for apenas um número
-            if (nome && nome !== "" && !nome.includes("(Pendente)") && !/^\d+$/.test(nome)) {
+            // Lógica de Filtro: Ignora se for número ou se contiver "(Pendente)"
+            const ehNomeValido = nome !== "" && !/^\d+$/.test(nome);
+            const estaPendente = nome.toLowerCase().includes("pendente");
+
+            if (ehNomeValido && !estaPendente) {
                 contagem[nome] = (contagem[nome] || 0) + 1;
                 numerosOcupados.push(numeroCota);
             }
         });
 
-        // 1. Atualizar Ranking (Apenas com nomes confirmados)
+        // Atualizar Ranking (Apenas confirmados)
         const rankingRaw = Object.entries(contagem)
             .map(([nome, total]) => ({ nome, total }))
             .sort((a, b) => b.total - a.total)
@@ -37,7 +41,7 @@ async function carregarDados() {
         const premios = ["10% off", "5% off", "Pelicula + Capinha"];
         renderizarRanking(rankingRaw.map((item, i) => ({ ...item, premio: premios[i] })));
 
-        // 2. Gerar Grade de Números (Números pendentes aparecerão como disponíveis)
+        // Gerar Grade (Pendentes aparecem como disponíveis)
         gerarNumerosDisponiveis(numerosOcupados);
 
     } catch (er) {
@@ -80,34 +84,23 @@ function gerarNumerosDisponiveis(ocupados) {
         const estaSelecionado = numerosSelecionados.includes(i);
 
         if (!estaOcupado) {
-            html += `
-                <button id="num-${i}" onclick="toggleNumero(${i})" 
-                        class="${estaSelecionado ? 'bg-emerald-500 border-white' : 'bg-gray-700 border-gray-600'} 
-                        hover:border-emerald-400 text-white text-xs font-bold p-2 rounded-lg border active:scale-95 transition-all">
-                    ${i}
-                </button>`;
+            html += `<button id="num-${i}" onclick="toggleNumero(${i})" class="${estaSelecionado ? 'bg-emerald-500 border-white' : 'bg-gray-700 border-gray-600'} hover:border-emerald-400 text-white text-xs font-bold p-2 rounded-lg border transition-all">${i}</button>`;
         } else {
-            html += `
-                <div class="bg-red-900/30 text-gray-500 text-xs p-2 rounded-lg border border-red-900/50 cursor-not-allowed opacity-50 text-center">
-                    ${i}
-                </div>`;
+            html += `<div class="bg-red-900/30 text-gray-500 text-xs p-2 rounded-lg border border-red-900/50 cursor-not-allowed opacity-50 text-center">${i}</div>`;
         }
     }
     grid.innerHTML = html;
 }
 
-function toggleNumero(numero) {
-    const index = numerosSelecionados.indexOf(numero);
-    const btn = document.getElementById(`num-${numero}`);
-
-    if (index === -1) {
-        numerosSelecionados.push(numero);
+function toggleNumero(num) {
+    const idx = numerosSelecionados.indexOf(num);
+    const btn = document.getElementById(`num-${num}`);
+    if (idx === -1) {
+        numerosSelecionados.push(num);
         btn.classList.replace('bg-gray-700', 'bg-emerald-500');
-        btn.classList.add('border-white');
     } else {
-        numerosSelecionados.splice(index, 1);
+        numerosSelecionados.splice(idx, 1);
         btn.classList.replace('bg-emerald-500', 'bg-gray-700');
-        btn.classList.remove('border-white');
     }
     atualizarInterfaceSelecao();
 }
@@ -129,47 +122,32 @@ async function finalizarEscolha() {
 
     try {
         for (const num of numerosSelecionados) {
-            await fetch(API_APPS_SCRIPT, {
-                method: 'POST',
-                mode: 'no-cors',
-                body: JSON.stringify({ nome: nome, numero: num })
-            });
+            await fetch(API_APPS_SCRIPT, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ nome: nome, numero: num }) });
         }
-
         const total = (numerosSelecionados.length * 5).toFixed(2);
-        const mensagem = window.encodeURIComponent(
-            `Olá! Tudo bem? Sou ${nome} e escolhi os números (${numerosSelecionados.join(', ')}) no site. Gostaria de receber os dados para o Pix no valor de R$ ${total}. Fico no aguardo!`
-        );
-        window.location.href = `https://wa.me/${MEU_WHATSAPP}?text=${mensagem}`;
-    } catch (err) {
-        alert("Erro na conexão ao reservar.");
-    }
+        const msg = window.encodeURIComponent(`Olá! Tudo bem? Sou ${nome} e escolhi os números (${numerosSelecionados.join(', ')}) no site. Gostaria de receber os dados para o Pix de R$ ${total}. Fico no aguardo!`);
+        window.location.href = `https://wa.me/${MEU_WHATSAPP}?text=${msg}`;
+    } catch (err) { alert("Erro ao reservar."); }
 }
 
 function atualizarCronometro() {
-    const dataSorteio = new Date('2026-02-14T19:00:00').getTime();
+    const alvo = new Date('2026-02-14T19:00:00').getTime();
     const agora = new Date().getTime();
-    const diferenca = dataSorteio - agora;
+    const diff = alvo - agora;
     const display = document.getElementById('countdown');
-
     if (!display) return;
-    if (diferenca <= 0) {
-        display.innerHTML = "🚀 O SORTEIO COMEÇOU!";
-        return;
-    }
-
-    const dias = Math.floor(diferenca / (1000 * 60 * 60 * 24));
-    const horas = Math.floor((diferenca % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    const minutos = Math.floor((diferenca % (1000 * 60 * 60)) / (1000 * 60));
-    const segundos = Math.floor((diferenca % (1000 * 60)) / 1000);
-
+    if (diff <= 0) { display.innerHTML = "🚀 O SORTEIO COMEÇOU!"; return; }
+    const d = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const s = Math.floor((diff % (1000 * 60)) / 1000);
     const pad = (n) => n.toString().padStart(2, '0');
-    display.innerText = `${pad(dias)}d ${pad(horas)}h ${pad(minutos)}m ${pad(segundos)}s`;
+    display.innerText = `${pad(d)}d ${pad(h)}h ${pad(m)}m ${pad(s)}s`;
 }
 
 document.getElementById('btn-whatsapp').addEventListener('click', () => {
-    const msgPadrao = window.encodeURIComponent("Olá! Tudo bem? Tenho uma dúvida sobre a rifa.");
-    window.open(`https://wa.me/${MEU_WHATSAPP}?text=${msgPadrao}`, '_blank');
+    const msg = window.encodeURIComponent("Olá! Tudo bem? Tenho uma dúvida sobre a rifa da Ponto A.");
+    window.open(`https://wa.me/${MEU_WHATSAPP}?text=${msg}`, '_blank');
 });
 
 carregarDados();
