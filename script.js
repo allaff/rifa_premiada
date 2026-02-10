@@ -143,6 +143,6 @@ setInterval(atualizarCronometro, 1000);
 atualizarCronometro();
 
 document.getElementById('btn-whatsapp').addEventListener('click', () => {
-    const msgPadrao = window.encodeURIComponent("Olá! Tenho uma dúvida sobre a rifa da Ponto A.");
+    const msgPadrao = window.encodeURIComponent("Olá! Tudo bem? Acabei de escolher meus números no site e gostaria de receber os dados para realizar o pagamento via Pix. Fico no aguardo!");
     window.open(`https://wa.me/${MEU_WHATSAPP}?text=${msgPadrao}`, '_blank');
 });
