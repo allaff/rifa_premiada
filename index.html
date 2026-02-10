@@ -32,6 +32,21 @@
             <div id="countdown" class="text-2xl font-mono mt-4 text-emerald-400">00d 00h 00m 00s</div>
         </section>
 
+        <section class="mb-8 px-2">
+            <div class="flex justify-between mb-2 text-sm font-medium">
+                <span class="text-gray-400">Progresso de Vendas</span>
+                <span id="progresso-texto" class="text-emerald-400">0%</span>
+            </div>
+            <div class="w-full bg-gray-700 rounded-full h-4 border border-gray-600 overflow-hidden">
+                <div id="progresso-barra" class="bg-emerald-500 h-full rounded-full transition-all duration-1000 ease-out"
+                    style="width: 0%">
+                </div>
+            </div>
+            <p class="text-[10px] text-gray-500 mt-2 text-center uppercase tracking-widest">
+                Faltam <span id="cotas-restantes" class="text-white">200</span> cotas para o sorteio
+            </p>
+        </section>
+
         <section class="bg-gray-800 rounded-2xl p-6 shadow-xl border border-gray-700 mb-8">
             <h2 class="text-xl font-semibold mb-6 flex items-center gap-2">🏆 Top Compradores</h2>
             <div id="ranking-list" class="space-y-4"></div>

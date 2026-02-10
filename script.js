@@ -7,9 +7,7 @@ let numerosSelecionados = [];
 // Função para buscar dados e atualizar interface
 async function carregarDados() {
     try {
-        // Timestamp ultra-preciso para evitar que o Google entregue dados velhos
-        const refreshRate = new Date().getTime();
-        const response = await fetch(`${SHEET_URL}&t=${refreshRate}`);
+        const response = await fetch(`${SHEET_URL}&t=${new Date().getTime()}`); // Força refresh
         const data = await response.text();
         const linhas = data.split('\n').map(l => l.trim()).slice(1);
 
@@ -23,7 +21,6 @@ async function carregarDados() {
             let nome = colunas[0].trim();
             const numeroCota = (index + 1).toString();
 
-            // Só ocupa se o nome for válido e não for "Pendente"
             const estaVazio = nome === "" || nome === undefined;
             const estaPendente = nome.toLowerCase().includes("pendente");
             const ehApenasNumero = /^\d+$/.test(nome);
@@ -34,6 +31,10 @@ async function carregarDados() {
             }
         });
 
+        // ATUALIZAÇÃO DA BARRA DE PROGRESSO
+        atualizarBarraProgresso(numerosOcupados.length);
+
+        // Ranking e Grade (Mantenha as chamadas existentes)
         const rankingRaw = Object.entries(contagem)
             .map(([nome, total]) => ({ nome, total }))
             .sort((a, b) => b.total - a.total)
@@ -45,6 +46,22 @@ async function carregarDados() {
 
     } catch (er) {
         console.error("Erro ao carregar dados:", er);
+    }
+}
+
+function atualizarBarraProgresso(totalVendido) {
+    const totalRifa = 200;
+    const porcentagem = Math.floor((totalVendido / totalRifa) * 100);
+    const restantes = totalRifa - totalVendido;
+
+    const barra = document.getElementById('progresso-barra');
+    const texto = document.getElementById('progresso-texto');
+    const txtRestantes = document.getElementById('cotas-restantes');
+
+    if (barra && texto && txtRestantes) {
+        barra.style.width = `${porcentagem}%`;
+        texto.innerText = `${porcentagem}%`;
+        txtRestantes.innerText = restantes;
     }
 }
 
