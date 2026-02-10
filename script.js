@@ -39,6 +39,27 @@ async function carregarDados() {
     }
 }
 
+function renderizarRanking(dados) {
+    const container = document.getElementById('ranking-list');
+    if (!container) return;
+
+    container.innerHTML = dados.map((c, index) => `
+        <div class="flex items-center justify-between p-4 bg-gray-700 rounded-xl mb-3">
+            <div class="flex items-center gap-4">
+                <span class="text-2xl font-black ${index === 0 ? 'text-yellow-400' : 'text-gray-400'}">${index + 1}º</span>
+                <div>
+                    <p class="font-bold uppercase">${c.nome}</p>
+                    <p class="text-xs text-emerald-400 font-medium">${c.premio}</p>
+                </div>
+            </div>
+            <div class="text-right">
+                <p class="text-lg font-bold">${c.total}</p>
+                <p class="text-[10px] text-gray-400 uppercase">Cotas</p>
+            </div>
+        </div>
+    `).join('');
+}
+
 function gerarNumerosDisponiveis(ocupados) {
     const grid = document.getElementById('numeros-grid');
     if (!grid) return;
