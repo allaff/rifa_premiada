@@ -2,6 +2,9 @@ const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRDD-3bcwgeWT
 const API_APPS_SCRIPT = 'https://script.google.com/macros/s/AKfycbx9z6JBOgLXAWMYe7eMsRFboewiquCc0JhvgkN3_IabOGLRSojEZ39KIyBp-VH1x6yP/exec';
 const MEU_WHATSAPP = '5583999646934';
 
+let numerosSelecionados = [];
+
+// Função principal de inicialização
 async function carregarDados() {
     try {
         const response = await fetch(SHEET_URL);
@@ -22,7 +25,7 @@ async function carregarDados() {
             }
         });
 
-        // 1. Ranking
+        // 1. Atualizar Ranking
         const rankingRaw = Object.entries(contagem)
             .map(([nome, total]) => ({ nome, total }))
             .sort((a, b) => b.total - a.total)
@@ -31,7 +34,7 @@ async function carregarDados() {
         const premios = ["10% off", "5% off", "Pelicula + Capinha"];
         renderizarRanking(rankingRaw.map((item, i) => ({ ...item, premio: premios[i] })));
 
-        // 2. Grade de Números
+        // 2. Gerar Grade de Números
         gerarNumerosDisponiveis(numerosOcupados);
 
     } catch (er) {
@@ -42,12 +45,10 @@ async function carregarDados() {
 function renderizarRanking(dados) {
     const container = document.getElementById('ranking-list');
     if (!container) return;
-
     if (dados.length === 0) {
-        container.innerHTML = '<p class="text-gray-500 text-center italic">Nenhuma compra registrada ainda.</p>';
+        container.innerHTML = '<p class="text-gray-500 text-center italic">Nenhuma compra registrada.</p>';
         return;
     }
-
     container.innerHTML = dados.map((c, index) => `
         <div class="flex items-center justify-between p-4 bg-gray-700 rounded-xl mb-3">
             <div class="flex items-center gap-4">
@@ -73,11 +74,13 @@ function gerarNumerosDisponiveis(ocupados) {
     for (let i = 1; i <= 200; i++) {
         const numeroStr = i.toString();
         const estaOcupado = ocupados.includes(numeroStr);
+        const estaSelecionado = numerosSelecionados.includes(i);
 
         if (!estaOcupado) {
             html += `
-                <button onclick="reservarCota(${i})" 
-                        class="bg-gray-700 hover:bg-emerald-600 text-white text-xs font-bold p-2 rounded-lg border border-gray-600 active:scale-95 transition-all">
+                <button id="num-${i}" onclick="toggleNumero(${i})" 
+                        class="${estaSelecionado ? 'bg-emerald-500 border-white' : 'bg-gray-700 border-gray-600'} 
+                        hover:border-emerald-400 text-white text-xs font-bold p-2 rounded-lg border active:scale-95 transition-all">
                     ${i}
                 </button>`;
         } else {
@@ -90,15 +93,64 @@ function gerarNumerosDisponiveis(ocupados) {
     grid.innerHTML = html;
 }
 
+function toggleNumero(numero) {
+    const index = numerosSelecionados.indexOf(numero);
+    const btn = document.getElementById(`num-${numero}`);
+
+    if (index === -1) {
+        numerosSelecionados.push(numero);
+        btn.classList.replace('bg-gray-700', 'bg-emerald-500');
+        btn.classList.add('border-white');
+    } else {
+        numerosSelecionados.splice(index, 1);
+        btn.classList.replace('bg-emerald-500', 'bg-gray-700');
+        btn.classList.remove('border-white');
+    }
+    atualizarInterfaceSelecao();
+}
+
+function atualizarInterfaceSelecao() {
+    const container = document.getElementById('selecao-container');
+    const lista = document.getElementById('lista-selecionados');
+    if (numerosSelecionados.length > 0) {
+        container.classList.remove('hidden');
+        lista.innerText = numerosSelecionados.sort((a, b) => a - b).join(', ');
+    } else {
+        container.classList.add('hidden');
+    }
+}
+
+async function finalizarEscolha() {
+    const nome = prompt(`🛒 RESERVA DE COTAS\nNúmeros: ${numerosSelecionados.join(', ')}\n\nDigite seu nome completo:`);
+    if (!nome || nome.trim().length < 3) return alert("Nome inválido!");
+
+    try {
+        // Envio múltiplo para o Google Apps Script
+        for (const num of numerosSelecionados) {
+            await fetch(API_APPS_SCRIPT, {
+                method: 'POST',
+                mode: 'no-cors',
+                body: JSON.stringify({ nome: nome, numero: num })
+            });
+        }
+
+        const total = (numerosSelecionados.length * 5).toFixed(2);
+        const mensagem = window.encodeURIComponent(
+            `Olá! Tudo bem? Sou ${nome} e escolhi os números (${numerosSelecionados.join(', ')}) no site. Gostaria de receber os dados para o Pix no valor de R$ ${total}. Fico no aguardo!`
+        );
+        window.location.href = `https://wa.me/${MEU_WHATSAPP}?text=${mensagem}`;
+    } catch (err) {
+        alert("Erro na conexão ao reservar.");
+    }
+}
+
 function atualizarCronometro() {
-    // Sorteio: 14 de Fevereiro de 2026 às 19:00
     const dataSorteio = new Date('2026-02-14T19:00:00').getTime();
     const agora = new Date().getTime();
     const diferenca = dataSorteio - agora;
     const display = document.getElementById('countdown');
 
     if (!display) return;
-
     if (diferenca <= 0) {
         display.innerHTML = "🚀 O SORTEIO COMEÇOU!";
         return;
@@ -113,36 +165,13 @@ function atualizarCronometro() {
     display.innerText = `${pad(dias)}d ${pad(horas)}h ${pad(minutos)}m ${pad(segundos)}s`;
 }
 
-async function reservarCota(numero) {
-    const nome = prompt(`🛒 RESERVA DO NÚMERO ${numero}\n\nDigite seu nome completo:`);
-
-    if (!nome || nome.trim().length < 3) {
-        alert("Nome inválido!");
-        return;
-    }
-
-    try {
-        await fetch(API_APPS_SCRIPT, {
-            method: 'POST',
-            mode: 'no-cors',
-            body: JSON.stringify({ nome: nome, numero: numero })
-        });
-
-        alert("✅ Sucesso! Agora confirme no WhatsApp.");
-        const mensagem = window.encodeURIComponent(`Olá! Sou ${nome} e reservei o número ${numero}. Como faço o pagamento?`);
-        window.location.href = `https://wa.me/${MEU_WHATSAPP}?text=${mensagem}`;
-
-    } catch (err) {
-        alert("Erro na conexão.");
-    }
-}
-
-// Inicialização
-carregarDados();
-setInterval(atualizarCronometro, 1000);
-atualizarCronometro();
-
+// Ouvinte para o botão fixo de WhatsApp do rodapé
 document.getElementById('btn-whatsapp').addEventListener('click', () => {
     const msgPadrao = window.encodeURIComponent("Olá! Tudo bem? Acabei de escolher meus números no site e gostaria de receber os dados para realizar o pagamento via Pix. Fico no aguardo!");
     window.open(`https://wa.me/${MEU_WHATSAPP}?text=${msgPadrao}`, '_blank');
 });
+
+// Inicialização Geral
+carregarDados();
+setInterval(atualizarCronometro, 1000);
+atualizarCronometro();
