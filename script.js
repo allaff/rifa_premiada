@@ -167,7 +167,7 @@ function atualizarCronometro() {
 
 // Ouvinte para o botão fixo de WhatsApp do rodapé
 document.getElementById('btn-whatsapp').addEventListener('click', () => {
-    const msgPadrao = window.encodeURIComponent("Olá! Tudo bem? Acabei de escolher meus números no site e gostaria de receber os dados para realizar o pagamento via Pix. Fico no aguardo!");
+    const msgPadrao = window.encodeURIComponent("Olá! Tudo bem? Tenho uma dúvida sobre a rifa.");
     window.open(`https://wa.me/${MEU_WHATSAPP}?text=${msgPadrao}`, '_blank');
 });
 
