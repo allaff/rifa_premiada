@@ -16,16 +16,19 @@ async function carregarDados() {
 
         linhas.forEach((linha, index) => {
             const colunas = linha.split(',');
-            const nome = colunas[0]?.trim();
+            let nome = colunas[0]?.trim();
             const numeroCota = (index + 1).toString();
 
-            if (nome && nome !== "" && !/^\d+$/.test(nome)) {
+            // LÓGICA DE FILTRO: 
+            // Só considera ocupado se tiver nome E NÃO contiver "(Pendente)"
+            // Também ignora se o campo for apenas um número
+            if (nome && nome !== "" && !nome.includes("(Pendente)") && !/^\d+$/.test(nome)) {
                 contagem[nome] = (contagem[nome] || 0) + 1;
                 numerosOcupados.push(numeroCota);
             }
         });
 
-        // 1. Atualizar Ranking
+        // 1. Atualizar Ranking (Apenas com nomes confirmados)
         const rankingRaw = Object.entries(contagem)
             .map(([nome, total]) => ({ nome, total }))
             .sort((a, b) => b.total - a.total)
@@ -34,7 +37,7 @@ async function carregarDados() {
         const premios = ["10% off", "5% off", "Pelicula + Capinha"];
         renderizarRanking(rankingRaw.map((item, i) => ({ ...item, premio: premios[i] })));
 
-        // 2. Gerar Grade de Números
+        // 2. Gerar Grade de Números (Números pendentes aparecerão como disponíveis)
         gerarNumerosDisponiveis(numerosOcupados);
 
     } catch (er) {
@@ -46,7 +49,7 @@ function renderizarRanking(dados) {
     const container = document.getElementById('ranking-list');
     if (!container) return;
     if (dados.length === 0) {
-        container.innerHTML = '<p class="text-gray-500 text-center italic">Nenhuma compra registrada.</p>';
+        container.innerHTML = '<p class="text-gray-500 text-center italic">Nenhuma compra confirmada.</p>';
         return;
     }
     container.innerHTML = dados.map((c, index) => `
@@ -125,7 +128,6 @@ async function finalizarEscolha() {
     if (!nome || nome.trim().length < 3) return alert("Nome inválido!");
 
     try {
-        // Envio múltiplo para o Google Apps Script
         for (const num of numerosSelecionados) {
             await fetch(API_APPS_SCRIPT, {
                 method: 'POST',
@@ -165,13 +167,11 @@ function atualizarCronometro() {
     display.innerText = `${pad(dias)}d ${pad(horas)}h ${pad(minutos)}m ${pad(segundos)}s`;
 }
 
-// Ouvinte para o botão fixo de WhatsApp do rodapé
 document.getElementById('btn-whatsapp').addEventListener('click', () => {
     const msgPadrao = window.encodeURIComponent("Olá! Tudo bem? Tenho uma dúvida sobre a rifa.");
     window.open(`https://wa.me/${MEU_WHATSAPP}?text=${msgPadrao}`, '_blank');
 });
 
-// Inicialização Geral
 carregarDados();
 setInterval(atualizarCronometro, 1000);
 atualizarCronometro();
