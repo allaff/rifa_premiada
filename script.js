@@ -141,3 +141,8 @@ async function reservarCota(numero) {
 carregarDados();
 setInterval(atualizarCronometro, 1000);
 atualizarCronometro();
+
+document.getElementById('btn-whatsapp').addEventListener('click', () => {
+    const msgPadrao = window.encodeURIComponent("Olá! Tenho uma dúvida sobre a rifa da Ponto A.");
+    window.open(`https://wa.me/${MEU_WHATSAPP}?text=${msgPadrao}`, '_blank');
+});
