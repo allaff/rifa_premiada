@@ -7,32 +7,38 @@ let numerosSelecionados = [];
 // Função para buscar dados e atualizar interface
 async function carregarDados() {
     try {
-        // Timestamp para forçar o Google a enviar dados frescos
-        const response = await fetch(`${SHEET_URL}&t=${new Date().getTime()}`);
+        // O "?t=" + data atual força o navegador a buscar sempre a versão mais nova da planilha
+        const cacheBuster = new Date().getTime();
+        const response = await fetch(`${SHEET_URL}&t=${cacheBuster}`);
         const data = await response.text();
-        const linhas = data.split('\n').slice(1);
+
+        // Divide por linhas e remove espaços em branco extras
+        const linhas = data.split('\n').map(l => l.trim()).slice(1);
 
         const contagem = {};
         const numerosOcupados = [];
 
         linhas.forEach((linha, index) => {
             const colunas = linha.split(',');
-            if (!colunas[0]) return;
-
-            let nome = colunas[0].trim();
+            let nome = colunas[0] ? colunas[0].trim() : "";
             const numeroCota = (index + 1).toString();
 
-            // Lógica de Filtro: Ignora se for número ou se contiver "(Pendente)"
-            const ehNomeValido = nome !== "" && !/^\d+$/.test(nome);
+            // CRITÉRIO DE DISPONIBILIDADE:
+            // Um número só é considerado OCUPADO se:
+            // 1. O campo nome NÃO estiver vazio
+            // 2. O campo nome NÃO contiver a palavra "Pendente"
+            // 3. O campo nome NÃO for apenas o número da cota (reset da planilha)
+            const estaVazio = nome === "" || nome === undefined;
             const estaPendente = nome.toLowerCase().includes("pendente");
+            const ehApenasNumero = /^\d+$/.test(nome);
 
-            if (ehNomeValido && !estaPendente) {
+            if (!estaVazio && !estaPendente && !ehApenasNumero) {
                 contagem[nome] = (contagem[nome] || 0) + 1;
                 numerosOcupados.push(numeroCota);
             }
         });
 
-        // Atualizar Ranking (Apenas confirmados)
+        // Atualiza Ranking e Grade
         const rankingRaw = Object.entries(contagem)
             .map(([nome, total]) => ({ nome, total }))
             .sort((a, b) => b.total - a.total)
@@ -41,7 +47,6 @@ async function carregarDados() {
         const premios = ["10% off", "5% off", "Pelicula + Capinha"];
         renderizarRanking(rankingRaw.map((item, i) => ({ ...item, premio: premios[i] })));
 
-        // Gerar Grade (Pendentes aparecem como disponíveis)
         gerarNumerosDisponiveis(numerosOcupados);
 
     } catch (er) {
