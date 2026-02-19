@@ -173,5 +173,5 @@ document.getElementById('btn-whatsapp').addEventListener('click', () => {
 });
 
 carregarDados();
-setInterval(atualizarCronometro, 1000);
-atualizarCronometro();
+//setInterval(atualizarCronometro, 1000);
+//atualizarCronometro();
